@@ -22,6 +22,7 @@ class Artist:
     4. Wishlist Tags
     5. Blacklist Tags
     6. References
+    7. Previously Assigned
     '''
     def __init__(self, row):
         self.name = row.iloc[0]
@@ -31,6 +32,7 @@ class Artist:
         self.wishlist_tags = commas_to_set(row.iloc[4])
         self.blacklist_tags = commas_to_set(row.iloc[5])
         self.references = row.iloc[6]
+        self.prevassign = commas_to_set(row.iloc[7])
         self.dataframe = row
     
     def __repr__(self):
@@ -88,12 +90,14 @@ def run(artists):
 
             if request.discord == option.discord:
                 # Requestor and artist is same person, 
-                pass
+                continue
 
             # If the REQUESTOR wishlist tags are not in ARTIST blacklist tags
-            # AND not already taken, assign and drop
-            if request.wishlist_tags.isdisjoint(option.blacklist_tags):
-                # The request did not hit anything in the blacklist
+            # AND not already taken, 
+            # AND they have not previously drawn for this artist, 
+            # assign and drop
+            if request.wishlist_tags.isdisjoint(option.blacklist_tags) and request.email not in option.prevassign:
+                # The request did not hit anything in the blacklist and haven't drawn for them in the past
                 assignments.append((request, option))
                 available.pop(i)
                 break
@@ -148,8 +152,8 @@ def export_to_csv(assignments):
     records = []
     for requestor, assignee in assignments:
         intromessage = f'''Hello {assignee.name}! You've been assigned {requestor.name}'s request. Here is the prompt: {requestor.wishlist}. 
-        Here are the provided reference pics: {requestor.references}. The first check-in will be on **Saturday November 30th**
-        Art will be due by **Sat Dec 21st Midnight**. Let us know if you have any questions, good luck and have fun! '''
+        And here are the provided reference pics: {requestor.references}. The first check-in will be on **March 21st**
+        Art will be due by **Friday April 4th at Midnight**. Let us know if you have any questions, good luck and have fun! Please respond or react to this message so we know its been received!'''
         r = (requestor.name, requestor.discord, assignee.name, assignee.discord, requestor.wishlist, requestor.references, intromessage)
         records.append(r)
 
