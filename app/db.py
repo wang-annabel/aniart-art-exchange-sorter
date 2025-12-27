@@ -21,24 +21,24 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     # artists this user has previously drawn for:
     drawn_for = relationship('PreviouslyAssigned',
                              foreign_keys='[PreviouslyAssigned.artist_id]',
-                             back_populates='recipient')
+                             back_populates='artist')
 
     # artists this user has previously received from:
     received_from = relationship('PreviouslyAssigned',
                                  foreign_keys='[PreviouslyAssigned.recipient_id]',
-                                 back_populates='requestor')
+                                 back_populates='recipient')
 
 class PreviouslyAssigned(Base): # many-to-many
     __tablename__ = 'previously_assigned'
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    requestor_id = Column(UUID(as_uuid=True), ForeignKey('user.id'), nullable=False)
+    artist_id = Column(UUID(as_uuid=True), ForeignKey('user.id'), nullable=False)
     recipient_id = Column(UUID(as_uuid=True), ForeignKey('user.id'), nullable=False)
     assigned_date = Column(DateTime, nullable=False, default=datetime.now())
 
     # relationships
-    requestor = relationship('User', foreign_keys=[requestor_id], back_populates='received_from')
-    recipient = relationship('User', foreign_keys=[recipient_id], back_populates='drawn_for')
+    artist = relationship('User', foreign_keys=[artist_id], back_populates='drawn_for')
+    recipient = relationship('User', foreign_keys=[recipient_id], back_populates='received_from')
 
 engine = create_async_engine(DATABASE_URL)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)

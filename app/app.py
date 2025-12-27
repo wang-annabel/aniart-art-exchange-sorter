@@ -4,10 +4,12 @@ import shutil
 import os
 import uuid
 import tempfile
+import pandas as pd
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from app.db import create_db_and_tables, get_async_session, User
+from app.db import create_db_and_tables, get_async_session, User, PreviouslyAssigned
 import app.matching as matching
 from app.schemas import MatchResponse
 
@@ -21,6 +23,35 @@ app = FastAPI(lifespan=lifespan)
 # in-memory cache for prev matchings for now
 matching_cache = dict()
 
+
+async def merge_previous_assignments(input_df: pd.DataFrame, session: AsyncSession):
+    '''Look up each participant in the database and populate Previously Assigned field'''
+
+    for idx, row in input_df.iterrows():
+        email = row['Email']
+
+        # Query for this user's previous assignments
+        query = select(PreviouslyAssigned).join(
+            User, PreviouslyAssigned.recipient_id == User.id
+        ).where(User.email == email)
+
+        result = await session.execute(query)
+        prev_assignments = result.scalars().all()
+
+        # Get the emails of artists who have drawn for this person before
+        if prev_assignments:
+            prev_artist_query = select(User.email).where(
+                User.id.in_([pa.artist_id for pa in prev_assignments])
+            )
+            prev_result = await session.execute(prev_artist_query)
+            prev_emails = [email for email, in prev_result.all()]
+            input_df.at[idx, 'Previously Assigned'] = ', '.join(prev_emails)
+        else:
+            input_df.at[idx, 'Previously Assigned'] = ''
+
+    return input_df
+
+
 @app.post('/matchings')
 async def create_matching(file: UploadFile = File(...),
                       session: AsyncSession = Depends(get_async_session)) -> MatchResponse:
@@ -32,12 +63,10 @@ async def create_matching(file: UploadFile = File(...),
         shutil.copyfileobj(file.file, temp_input)
         temp_input.close()
 
-        # check for input.csv format
-
-        # convert to input format
         input_df = matching.form_response_to_input(temp_input.name)
 
         # merge with prev data
+        input_df = await merge_previous_assignments(input_df, session)
 
         # Save processed input
         matching_id = str(uuid.uuid4())
@@ -48,13 +77,11 @@ async def create_matching(file: UploadFile = File(...),
         raw = [i[1] for i in input_df.iterrows()]
         artists = [matching.Artist(i) for i in raw]
 
-        success = False
         NUM_ATTEMPTS = 100
         for _ in range(NUM_ATTEMPTS):
             match_results = matching.run(artists)
 
             if match_results['success']:
-                success = True
                 break
 
         # store in matching cache
@@ -99,7 +126,7 @@ async def get_matching(matching_id: str) -> MatchResponse:
     '''Returns details of a matching attempt.
     Returns data for a graph visualization'''
     if matching_id not in matching_cache:
-        raise HTTPException(status_code = 404, detail = f'No such matching: {matching_id}')
+        raise HTTPException(status_code=404, detail = f'No such matching: {matching_id}')
 
     response = matching_cache[matching_id]
     response.pop('assignments')
@@ -108,10 +135,13 @@ async def get_matching(matching_id: str) -> MatchResponse:
     return response
 
 @app.post('/matchings/{matching_id}/confirm')
-async def confirm_matching(matching_id: str) -> MatchResponse:
+async def confirm_matching(matching_id: str,
+                           session: AsyncSession = Depends(get_async_session)) -> MatchResponse:
     '''User confirms the matching. Matches are committed to the previously_assigned table.'''
     if matching_id not in matching_cache:
-        raise HTTPException(status_code = 404, detail = f'No such matching: {matching_id}')
+        raise HTTPException(status_code=404, detail = f'No such matching: {matching_id}')
+
+    # post to db
 
 
 
