@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from fastapi_users import schemas
 from uuid import UUID
-from app.matching import Artist
+#from app.matching import Artist
 
 class UnmatchedArtist(BaseModel):
     name: str

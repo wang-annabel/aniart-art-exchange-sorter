@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Depends
+from fastapi.responses import FileResponse
 import shutil
 import os
 import uuid
@@ -17,12 +18,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# endpoint sketching
-
-'''how are input.csv and output.csv handled? each generated matching overwrites
-the last output.csv, but the user doesn't care about anything past that,
-so no need to store in db...'''
-matching_cache = set()
+# in-memory cache for prev matchings for now
+matching_cache = dict()
 
 @app.post('/matchings')
 async def create_matching(file: UploadFile = File(...),
@@ -61,7 +58,7 @@ async def create_matching(file: UploadFile = File(...),
                 break
 
         # store in matching cache
-        return {
+        match_response = {
                 'matching_id': matching_id,
                 'success': match_results['success'],
                 'matched_count': len(match_results['assignments']),
@@ -70,6 +67,20 @@ async def create_matching(file: UploadFile = File(...),
         {'name': artist.name, 'email': artist.email, 'discord': artist.discord}
         for artist in match_results['failed']]
         }
+
+        # cleaner way to do this
+        matching_cache[matching_id] = {
+                'success': match_results['success'],
+                'matched_count': len(match_results['assignments']),
+                'total_count': len(artists),
+                'assignments': match_results['assignments'],
+                'unmatched': [
+        {'name': artist.name, 'email': artist.email, 'discord': artist.discord}
+        for artist in match_results['failed']]
+        }
+
+
+        return match_response
 
     except TypeError: # non-csv upload
         raise HTTPException(status_code=400, detail='Invalid file type. Please upload a CSV file.')
@@ -84,20 +95,37 @@ async def create_matching(file: UploadFile = File(...),
         file.file.close()
 
 @app.get('/matchings/{matching_id}')
-async def get_matching(matching_id: str):
+async def get_matching(matching_id: str) -> MatchResponse:
     '''Returns details of a matching attempt.
     Returns data for a graph visualization'''
-    pass
+    if matching_id not in matching_cache:
+        raise HTTPException(status_code = 404, detail = f'No such matching: {matching_id}')
 
+    response = matching_cache[matching_id]
+    response.pop('assignments')
+    response['matching_id'] = matching_id
+
+    return response
 
 @app.post('/matchings/{matching_id}/confirm')
-async def confirm_matching():
+async def confirm_matching(matching_id: str) -> MatchResponse:
     '''User confirms the matching. Matches are committed to the previously_assigned table.'''
-    pass
+    if matching_id not in matching_cache:
+        raise HTTPException(status_code = 404, detail = f'No such matching: {matching_id}')
+
+
 
 @app.get('/matchings/{matching_id}/download')
-async def download_output(matching_id: str):
+async def download_output(matching_id: str) -> FileResponse:
     ''' Returns output.csv file for download.'''
-    pass
+    if matching_id not in matching_cache:
+        raise HTTPException(status_code=404, detail=f'No such matching: {matching_id}')
+
+    assignment = matching_cache[matching_id]['assignments']
+
+    output_path = f'generated/output_{matching_id}.csv'
+    matching.export_to_csv(assignment, output_path)
+
+    return FileResponse(output_path, media_type='text/csv')
 
 

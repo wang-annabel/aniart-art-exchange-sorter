@@ -181,7 +181,7 @@ def create_dataframe(column_names, list_of_records):
     return pd.DataFrame.from_records(list_of_records, columns=column_names)
 
 # artist, artist tag, requestor, wishlist, references
-def export_to_csv(assignments):
+def export_to_csv(assignments, output_path='output.csv'):
     headers = ['Requestor Name', 'Requestor Discord', 'Assignee Name', 'Assignee Discord', 'Prompt', 'References', 'Intro Message']
     records = []
     for requestor, assignee in assignments:
@@ -192,7 +192,7 @@ def export_to_csv(assignments):
         records.append(r)
 
     df = create_dataframe(headers, records)
-    df.to_csv('output.csv', sep=',', index=False, encoding='utf-8')
+    df.to_csv(output_path, sep=',', index=False, encoding='utf-8')
 
 # ==================================================
 # Execution Guard
