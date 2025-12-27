@@ -5,6 +5,40 @@ import random
 # CSV Parsing Utilities
 # ==================================================
 
+def form_response_to_input(file):
+    '''Convert raw Google form response csv to input.csv format'''
+    print(file.split('.'))
+    if file.split('.')[-1] != 'csv':
+        raise TypeError('File extension must be .csv')
+
+    df = pd.read_csv(file)
+
+    # Map the Google Form columns to the input format columns
+    # Form columns -> Input columns
+
+    # raises KeyError on missing columns
+    input_df = pd.DataFrame({
+        'Name': df['Your Name Here:'],
+        'Discord': df['Discord handle:'],
+        'Email': df['What is your email? (UCI email please!)'],
+        'Wishlist': df['Wishlist'],
+        'Wishlist Tags': df['Wishlist Tags'],
+        'Blacklist Tags': df['Blacklist (optional)'],
+        'References': df['References (strongly recommended)'],
+        'Previously Assigned': float('nan')  # Empty string for new participants
+    })
+
+    # Clean up the data
+    # Replace NaN values in Blacklist Tags with empty string
+    input_df['Blacklist Tags'] = input_df['Blacklist Tags'].fillna('')
+
+    # Strip whitespace from all string columns
+    for col in input_df.columns:
+        if input_df[col].dtype == 'object':
+            input_df[col] = input_df[col].str.strip()
+
+    return input_df
+
 def commas_to_set(raw):
     if isinstance(raw, float):
         # Empty column is typed as NAN float
@@ -70,7 +104,7 @@ def main():
 # Matching Algorithm
 # ==================================================
 
-def run(artists):
+def run(artists: list[str]):
     assignments = []
     failed = []
     available = artists.copy()

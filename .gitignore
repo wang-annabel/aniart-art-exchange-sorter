@@ -2,3 +2,6 @@ uv.lock
 .env
 .python-version
 .venv
+generated
+tests.py
+test
