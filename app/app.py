@@ -7,7 +7,7 @@ import tempfile
 import pandas as pd
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, insert
 
 from app.db import create_db_and_tables, get_async_session, User, PreviouslyAssigned
 import app.matching as matching
@@ -98,6 +98,7 @@ async def create_matching(file: UploadFile = File(...),
         # cleaner way to do this
         matching_cache[matching_id] = {
                 'success': match_results['success'],
+                'confirmed': False,
                 'matched_count': len(match_results['assignments']),
                 'total_count': len(artists),
                 'assignments': match_results['assignments'],
@@ -136,12 +137,56 @@ async def get_matching(matching_id: str) -> MatchResponse:
 
 @app.post('/matchings/{matching_id}/confirm')
 async def confirm_matching(matching_id: str,
-                           session: AsyncSession = Depends(get_async_session)) -> MatchResponse:
+                           session: AsyncSession = Depends(get_async_session)):
     '''User confirms the matching. Matches are committed to the previously_assigned table.'''
     if matching_id not in matching_cache:
         raise HTTPException(status_code=404, detail = f'No such matching: {matching_id}')
 
-    # post to db
+    match_info = matching_cache[matching_id]
+
+    # prevent double-confirmations
+    if match_info['confirmed']:
+        raise HTTPException(status_code=400, detail = 'This matching is already confirmed.')
+
+    try:
+        for artist, recipient in match_info['assignments']:
+
+            artist_user = await session.execute(select(User).where(User.email == artist.email))
+            recipient_user = await session.execute(select(User).where(User.email == recipient.email))
+
+            artist_user = artist_user.scalar_one_or_none()
+            recipient_user = recipient_user.scalar_one_or_none()
+
+            # add artist to db if not already existing
+            if not artist_user:
+                artist_user = User(email=artist.email,
+                                   name=artist.name,
+                                   discord=artist.discord)
+                session.add(artist_user)
+                await session.flush() # to access id for insertion
+
+            if not recipient_user:
+                recipient_user = User(email=recipient.email,
+                                      name=recipient.name,
+                                      discord=recipient.discord)
+                session.add(recipient_user)
+                await session.flush()
+
+            # add the assignment
+            prev_assigned = PreviouslyAssigned(
+                artist_id = artist_user.id,
+                recipient_id = recipient_user.id
+            )
+            session.add(prev_assigned)
+        await session.commit()
+        match_info['confirmed'] = True
+
+        return {'message': 'Matching confirmed successfully', 'matching_id': matching_id}
+
+
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 

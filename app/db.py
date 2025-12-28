@@ -13,9 +13,12 @@ DATABASE_URL = 'sqlite+aiosqlite:///./test.db'
 class Base(DeclarativeBase):
     pass
 
-class User(SQLAlchemyBaseUserTableUUID, Base):
-    email = Column(String, nullable=False)
+class User(Base):
+    __tablename__ = 'user'
+    id = Column(UUID(as_uuid = True), primary_key = True, default = uuid.uuid4)
+    email = Column(String, nullable=False, unique=True)
     name = Column(String, nullable=False)
+    discord = Column(String, nullable=False)
 
     # foreign key relationships for previous assignments
     # artists this user has previously drawn for:
