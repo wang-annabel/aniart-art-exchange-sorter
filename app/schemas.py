@@ -14,3 +14,6 @@ class MatchResponse(BaseModel):
     matched_count: int
     total_count: int
     unmatched: list[UnmatchedArtist]
+
+class GraphResponse(BaseModel):
+    pass

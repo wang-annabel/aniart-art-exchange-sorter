@@ -7,6 +7,7 @@ from sqlalchemy.orm import DeclarativeBase, relationship
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase, SQLAlchemyBaseUserTableUUID
 from fastapi import Depends
 from datetime import datetime
+
 DATABASE_URL = 'sqlite+aiosqlite:///./test.db'
 # change for prod
 

@@ -6,11 +6,17 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "aiosqlite>=0.22.1",
+    "asyncpg>=0.30.0",
+    "psycopg2-binary>=2.9.10",
     "fastapi>=0.127.0",
     "fastapi-users[sqlalchemy]>=15.0.3",
     "python-dotenv>=1.2.1",
     "taskipy>=1.14.1",
     "uvicorn[standard]>=0.40.0",
+    "alembic>=1.17.2",
 ]
 [tool.taskipy.tasks]
 dev = "uvicorn app.app:app --host localhost --port 8000 --reload"
+migrate = "alembic upgrade head"
+makemigrations = "alembic revision --autogenerate -m"
+
