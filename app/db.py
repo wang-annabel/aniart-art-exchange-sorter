@@ -12,8 +12,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-print(f"DEBUG: DATABASE_URL = {os.getenv('DATABASE_URL')}")
-
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 # Don't provide a fallback yet - let it fail if not set
