@@ -15,7 +15,7 @@ from app.schemas import MatchResponse
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await create_db_and_tables()
+    #await create_db_and_tables()
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -123,7 +123,7 @@ async def create_matching(file: UploadFile = File(...),
         file.file.close()
 
 @app.get('/matchings/{matching_id}')
-async def get_matching(matching_id: str) -> MatchResponse:
+async def get_matching(matching_id: str):
     '''Returns details of a matching attempt.
     Returns data for a graph visualization'''
     if matching_id not in matching_cache:
@@ -132,6 +132,8 @@ async def get_matching(matching_id: str) -> MatchResponse:
     response = matching_cache[matching_id]
     response.pop('assignments')
     response['matching_id'] = matching_id
+
+    edges = [{}]
 
     return response
 

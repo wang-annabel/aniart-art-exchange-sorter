@@ -14,6 +14,7 @@ dependencies = [
     "taskipy>=1.14.1",
     "uvicorn[standard]>=0.40.0",
     "alembic>=1.17.2",
+    "pandas>=2.3.3",
 ]
 [tool.taskipy.tasks]
 dev = "uvicorn app.app:app --host localhost --port 8000 --reload"

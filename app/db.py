@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncGenerator
 import uuid
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey
@@ -7,8 +8,21 @@ from sqlalchemy.orm import DeclarativeBase, relationship
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase, SQLAlchemyBaseUserTableUUID
 from fastapi import Depends
 from datetime import datetime
+from dotenv import load_dotenv
 
-DATABASE_URL = 'sqlite+aiosqlite:///./test.db'
+load_dotenv()
+
+print(f"DEBUG: DATABASE_URL = {os.getenv('DATABASE_URL')}")
+
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+# Don't provide a fallback yet - let it fail if not set
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable not set!")
+
+# DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite+aiosqlite:///./test.db')
+# print('using url:', DATABASE_URL)
+# 'sqlite+aiosqlite:///./test.db'
 # change for prod
 
 class Base(DeclarativeBase):
