@@ -130,10 +130,41 @@ async def get_matching(matching_id: str):
         raise HTTPException(status_code=404, detail = f'No such matching: {matching_id}')
 
     response = matching_cache[matching_id]
-    response.pop('assignments')
-    response['matching_id'] = matching_id
+    assignments = response['assignments']
+    # response.pop('assignments')
+    # response['matching_id'] = matching_id
 
-    edges = [{}]
+    # Build nodes and links
+    nodes_dict = {}
+    links = []
+
+    for artist, recipient in assignments:
+        # Add nodes
+        if artist.email not in nodes_dict:
+            nodes_dict[artist.email] = {
+                'id': artist.email,
+                'name': artist.name,
+                'discord': artist.discord,
+                'email': artist.email
+            }
+        if recipient.email not in nodes_dict:
+            nodes_dict[recipient.email] = {
+                'id': recipient.email,
+                'name': recipient.name,
+                'discord': recipient.discord,
+                'email': recipient.email
+            }
+
+        # Add link (artist draws for recipient)
+        links.append({
+            'source': artist.email,
+            'target': recipient.email
+        })
+
+    return {
+        'nodes': list(nodes_dict.values()),
+        'links': links
+    }
 
     return response
 
