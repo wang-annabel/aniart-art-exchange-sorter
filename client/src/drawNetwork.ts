@@ -13,9 +13,6 @@ export interface Link extends d3.SimulationLinkDatum<Node> {
   value: number;
 }
 
-export const RADIUS = 10;
-
-// Helper to get neighbors of a node
 const getNeighbors = (node: Node, links: Link[]): Set<string> => {
   const neighbors = new Set<string>();
   links.forEach((link) => {
@@ -40,13 +37,14 @@ export const drawNetwork = (
   height: number,
   nodes: Node[],
   links: Link[],
-  hoveredNode?: Node | null
+  hoveredNode?: Node | null,
+  radius: number = 10 // Add radius parameter with default
 ) => {
   context.clearRect(0, 0, width, height);
 
   const neighbors = hoveredNode ? getNeighbors(hoveredNode, links) : new Set();
 
-  // Draw the links
+  // Draw links
   links.forEach((link) => {
     const source =
       typeof link.source === "object"
@@ -76,7 +74,7 @@ export const drawNetwork = (
     context.moveTo(source.x, source.y);
     context.lineTo(target.x, target.y);
     context.strokeStyle = isHighlighted ? "#3b82f6" : "#64748b";
-    context.lineWidth = isHighlighted ? 3 : 1.5;
+    context.lineWidth = isHighlighted ? 2 : 1;
     context.globalAlpha = hoveredNode && !isHighlighted ? 0.2 : 0.6;
     context.stroke();
     context.globalAlpha = 1;
@@ -87,9 +85,8 @@ export const drawNetwork = (
       const arrowLength = 8;
       const arrowWidth = 6;
 
-      // Position arrow at the edge of target node
-      const arrowX = target.x - Math.cos(angle) * (RADIUS + 2);
-      const arrowY = target.y - Math.sin(angle) * (RADIUS + 2);
+      const arrowX = target.x - Math.cos(angle) * (radius + 2);
+      const arrowY = target.y - Math.sin(angle) * (radius + 2);
 
       context.beginPath();
       context.moveTo(arrowX, arrowY);
@@ -107,7 +104,7 @@ export const drawNetwork = (
     }
   });
 
-  // Draw the nodes
+  // Draw nodes
   nodes.forEach((node) => {
     if (!node.x || !node.y) {
       return;
@@ -117,36 +114,33 @@ export const drawNetwork = (
     const isNeighbor = hoveredNode && neighbors.has(node.id);
     const isHighlighted = isHovered || isNeighbor;
 
-    // Dim non-highlighted nodes when hovering
     context.globalAlpha = hoveredNode && !isHighlighted ? 0.3 : 1;
 
-    // Draw node circle
     context.beginPath();
     context.arc(
       node.x,
       node.y,
-      isHovered ? RADIUS + 3 : RADIUS,
+      isHovered ? radius + 2 : radius,
       0,
       2 * Math.PI
     );
     context.fillStyle = isHovered ? "#3b82f6" : "#6366f1";
     context.fill();
 
-    // Draw border
     context.strokeStyle = isHighlighted ? "#60a5fa" : "#4f46e5";
-    context.lineWidth = isHighlighted ? 2.5 : 2;
+    context.lineWidth = isHighlighted ? 2 : 1.5;
     context.stroke();
 
     context.globalAlpha = 1;
 
-    // Draw label (first name only)
+    // Draw label
     if (node.name) {
       const firstName = node.name.split(" ")[0];
-      //context.fillStyle = "white";
-      context.font = `${isHovered ? "bold " : ""}12px sans-serif`;
+      context.fillStyle = "white";
+      context.font = `${isHovered ? "bold " : ""}11px sans-serif`;
       context.textAlign = "center";
       context.textBaseline = "middle";
-      context.fillText(firstName, node.x, node.y + RADIUS + 15);
+      context.fillText(firstName, node.x, node.y + radius + 12);
     }
   });
 };

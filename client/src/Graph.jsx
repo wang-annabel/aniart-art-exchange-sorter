@@ -1,64 +1,56 @@
-// Graph.jsx
-import { useRef, useEffect, useState } from "react";
+// Graph.jsx - Responsive version
+import { useRef, useEffect, useState, useMemo } from "react";
 import * as d3 from "d3";
-import { RADIUS, drawNetwork } from "./drawNetwork";
+import { drawNetwork } from "./drawNetwork";
 
-const sampleData = {
-  nodes: [
-    {
-      id: "1",
-      name: "Alice Chen",
-      discord: "alice#1234",
-      email: "alice@example.com",
-    },
-    {
-      id: "2",
-      name: "Bob Smith",
-      discord: "bob#5678",
-      email: "bob@example.com",
-    },
-    {
-      id: "3",
-      name: "Carol Wang",
-      discord: "carol#9012",
-      email: "carol@example.com",
-    },
-    {
-      id: "4",
-      name: "David Lee",
-      discord: "david#3456",
-      email: "david@example.com",
-    },
-    {
-      id: "5",
-      name: "Eve Park",
-      discord: "eve#7890",
-      email: "eve@example.com",
-    },
-  ],
-  links: [
-    { source: "1", target: "2", value: 1 },
-    { source: "2", target: "3", value: 1 },
-    { source: "3", target: "4", value: 1 },
-    { source: "4", target: "5", value: 1 },
-    { source: "5", target: "1", value: 1 },
-  ],
-};
+import sampleData from "./sampleData";
 
-function Graph({ width = 800, height = 600, data = sampleData }) {
-  const links = data.links.map((d) => ({ ...d }));
-  const nodes = data.nodes.map((d) => ({ ...d }));
+// Make RADIUS configurable
+const RADIUS = 8; // Smaller for larger graphs
 
+function Graph({ data = sampleData, nodeRadius = RADIUS }) {
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [hoveredNode, setHoveredNode] = useState(null);
-  const hoveredNodeRef = useRef(null); // ← Add ref to track hover
+  const hoveredNodeRef = useRef(null);
 
+  // Memoize to prevent recreating on every render
+  const links = useMemo(() => data.links.map((d) => ({ ...d })), [data.links]);
+  const nodes = useMemo(() => data.nodes.map((d) => ({ ...d })), [data.nodes]);
+
+  // Handle resize - update dimensions when container size changes
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setDimensions({ width, height });
+      }
+    };
+
+    // Set initial dimensions
+    updateDimensions();
+
+    // Listen for resize events
+    window.addEventListener("resize", updateDimensions);
+
+    return () => {
+      window.removeEventListener("resize", updateDimensions);
+    };
+  }, []);
+
+  // D3 simulation effect
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!context || !canvas) {
       return;
     }
+
+    // Scale force strengths based on number of nodes
+    const nodeCount = nodes.length;
+    const chargeStrength = -300 * Math.sqrt(nodeCount / 10); // Stronger repulsion for more nodes
+    const linkDistance = Math.min(150, dimensions.width / 8); // Scale with canvas size
 
     const simulation = d3
       .forceSimulation(nodes)
@@ -67,20 +59,40 @@ function Graph({ width = 800, height = 600, data = sampleData }) {
         d3
           .forceLink(links)
           .id((d) => d.id)
-          .distance(100)
+          .distance(linkDistance)
       )
-      .force("collide", d3.forceCollide().radius(RADIUS + 5))
-      .force("charge", d3.forceManyBody().strength(-300))
-      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("collide", d3.forceCollide().radius(nodeRadius + 5))
+      .force("charge", d3.forceManyBody().strength(chargeStrength))
+      .force(
+        "center",
+        d3.forceCenter(dimensions.width / 2, dimensions.height / 2)
+      )
+      // Keep nodes within bounds
+      .force("x", d3.forceX(dimensions.width / 2).strength(0.05))
+      .force("y", d3.forceY(dimensions.height / 2).strength(0.05))
       .on("tick", () => {
-        // Use ref instead of state
+        // Constrain nodes to canvas bounds
+        nodes.forEach((node) => {
+          if (node.x !== undefined && node.y !== undefined) {
+            node.x = Math.max(
+              nodeRadius,
+              Math.min(dimensions.width - nodeRadius, node.x)
+            );
+            node.y = Math.max(
+              nodeRadius,
+              Math.min(dimensions.height - nodeRadius, node.y)
+            );
+          }
+        });
+
         drawNetwork(
           context,
-          width,
-          height,
+          dimensions.width,
+          dimensions.height,
           nodes,
           links,
-          hoveredNodeRef.current
+          hoveredNodeRef.current,
+          nodeRadius
         );
       });
 
@@ -96,20 +108,25 @@ function Graph({ width = 800, height = 600, data = sampleData }) {
           const dy = node.y - y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance < RADIUS + 5) {
+          if (distance < nodeRadius + 5) {
             found = node;
             break;
           }
         }
       }
 
-      // Update both ref and state
       hoveredNodeRef.current = found;
-      setHoveredNode(found); // For tooltip display
+      setHoveredNode(found);
       canvas.style.cursor = found ? "pointer" : "default";
-
-      // Manually trigger a redraw
-      drawNetwork(context, width, height, nodes, links, found);
+      drawNetwork(
+        context,
+        dimensions.width,
+        dimensions.height,
+        nodes,
+        links,
+        found,
+        nodeRadius
+      );
     };
 
     canvas.addEventListener("mousemove", handleMouseMove);
@@ -118,37 +135,55 @@ function Graph({ width = 800, height = 600, data = sampleData }) {
       simulation.stop();
       canvas.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [width, height, nodes, links]); // hoveredNode NOT in dependencies
+  }, [dimensions, nodes, links, nodeRadius]);
 
   return (
-    <div style={{ position: "relative" }}>
+    <div
+      ref={containerRef}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        minHeight: "400px", // Prevent collapse
+      }}
+    >
       <canvas
         ref={canvasRef}
-        style={{ width, height }}
-        width={width}
-        height={height}
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "block",
+        }}
+        width={dimensions.width}
+        height={dimensions.height}
       />
-      {/* {hoveredNode && (
+      {hoveredNode && (
         <div
           style={{
             position: "absolute",
-            top: "10px",
-            left: "10px",
-            background: "rgba(0, 0, 0, 0.8)",
+            top: "16px",
+            left: "16px",
+            background: "rgba(0, 0, 0, 0.9)",
             color: "white",
-            padding: "8px 12px",
-            borderRadius: "4px",
+            padding: "12px 16px",
+            borderRadius: "8px",
             pointerEvents: "none",
             fontSize: "14px",
+            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.3)",
+            maxWidth: "250px",
           }}
         >
-          <div>
-            <strong>{hoveredNode.name}</strong>
+          <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
+            {hoveredNode.name}
           </div>
-          <div>{hoveredNode.discord}</div>
-          <div>{hoveredNode.email}</div>
+          <div style={{ fontSize: "12px", opacity: 0.9 }}>
+            {hoveredNode.discord}
+          </div>
+          <div style={{ fontSize: "12px", opacity: 0.8 }}>
+            {hoveredNode.email}
+          </div>
         </div>
-      )} */}
+      )}
     </div>
   );
 }
