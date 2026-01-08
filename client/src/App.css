@@ -3,6 +3,26 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+
+  font-family: "DM Sans", sans-serif;
+  font-optical-sizing: auto;
+}
+
+.content {
+  margin: 4em 0;
+  text-align: center;
+}
+
+.upload-btn {
+  display: flex;
+  align-items: center; /* Vertically centers items */
+  gap: 0.5em; /* Spacing between icon and text */
+  margin: 0 auto;
+}
+
+#upload-btn-icon {
+  height: 2em;
+  display: block; /* Removes extra space below image */
 }
 
 .logo {
@@ -11,30 +31,19 @@
   will-change: filter;
   transition: filter 300ms;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.cards {
+  display: flex;
+  gap: 1em;
+  margin: 2em 0;
 }
 
 .card {
   padding: 2em;
+  border: 2px solid #d5c1f7; /* width style color */
+  border-radius: 1em; /* rounds the corners */
+  max-width: 16em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .read-the-docs {
