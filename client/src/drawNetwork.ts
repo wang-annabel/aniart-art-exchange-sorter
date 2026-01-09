@@ -41,7 +41,8 @@ export const drawNetwork = (
   radius: number = 10 // Add radius parameter with default
 ) => {
   context.clearRect(0, 0, width, height);
-
+  const totalNodes = nodes.length;
+  const showAllNames = totalNodes < 50;
   const neighbors = hoveredNode ? getNeighbors(hoveredNode, links) : new Set();
 
   // Draw links
@@ -133,14 +134,27 @@ export const drawNetwork = (
 
     context.globalAlpha = 1;
 
-    // Draw label
+    // Draw labels with conditional visibility
     if (node.name) {
       const firstName = node.name.split(" ")[0];
-      context.fillStyle = "white";
-      context.font = `${isHovered ? "bold " : ""}11px sans-serif`;
-      context.textAlign = "center";
-      context.textBaseline = "middle";
-      context.fillText(firstName, node.x, node.y + radius + 12);
+
+      // Show name if: under threshold OR currently hovered
+      if (showAllNames || isHovered) {
+        context.fillStyle = "#342452";
+        context.font = `${isHovered ? "bold " : ""}11px sans-serif`;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(firstName, node.x, node.y + radius + 12);
+      }
+
+      // Show discord handle ONLY if hovered
+      if (isHovered && node.discord) {
+        context.fillStyle = "#60a5fa"; // Lighter blue for discord
+        context.font = "10px sans-serif";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(node.discord, node.x, node.y + radius + 24);
+      }
     }
   });
 };

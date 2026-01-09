@@ -50,7 +50,7 @@ function Graph({ data = sampleData, nodeRadius = RADIUS }) {
     // Scale force strengths based on number of nodes
     const nodeCount = nodes.length;
     const chargeStrength = -300 * Math.sqrt(nodeCount / 10); // Stronger repulsion for more nodes
-    const linkDistance = Math.min(150, dimensions.width / 8); // Scale with canvas size
+    const linkDistance = Math.min(100, dimensions.width / 8); // Scale with canvas size
 
     const simulation = d3
       .forceSimulation(nodes)
@@ -68,8 +68,8 @@ function Graph({ data = sampleData, nodeRadius = RADIUS }) {
         d3.forceCenter(dimensions.width / 2, dimensions.height / 2)
       )
       // Keep nodes within bounds
-      .force("x", d3.forceX(dimensions.width / 2).strength(0.05))
-      .force("y", d3.forceY(dimensions.height / 2).strength(0.05))
+      .force("x", d3.forceX(dimensions.width / 2).strength(0.2))
+      .force("y", d3.forceY(dimensions.height / 2).strength(0.2))
       .on("tick", () => {
         // Constrain nodes to canvas bounds
         nodes.forEach((node) => {
@@ -163,13 +163,13 @@ function Graph({ data = sampleData, nodeRadius = RADIUS }) {
             position: "absolute",
             top: "16px",
             left: "16px",
-            background: "rgba(0, 0, 0, 0.9)",
+
             color: "white",
             padding: "12px 16px",
             borderRadius: "8px",
             pointerEvents: "none",
             fontSize: "14px",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.3)",
+
             maxWidth: "250px",
           }}
         >

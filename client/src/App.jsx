@@ -6,7 +6,7 @@ import "./App.css";
 function App() {
   const [count, setCount] = useState(0);
   // eventually set this to retrieve matchings from local storage
-  const [matchings, setMatchings] = useState([]);
+  const [matchings, setMatchings] = useState([0]);
 
   return (
     <>
