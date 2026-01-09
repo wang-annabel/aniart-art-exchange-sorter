@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Graph from "./Graph";
 import Cards from "./Cards";
+import MatchingCard from "./MatchingCard";
 import "./App.css";
 
 function App() {
@@ -21,7 +22,7 @@ function App() {
       </div>
       <div id="content">
         {matchings.length == 0 && <Cards />}
-        {matchings.length > 0 && <Graph width={400} height={400} />}
+        {matchings.length > 0 && <MatchingCard />}
       </div>
     </>
   );

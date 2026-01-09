@@ -1,3 +1,12 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #f8f0fe; /* Full page background */
+}
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -48,6 +57,67 @@
   border-radius: 1em; /* rounds the corners */
   max-width: 16em;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.graph-card {
+  overflow: hidden;
+  border-radius: 0.5em;
+  width: 100%; /* Always fill container */
+  max-width: 1200px;
+  margin: 20px auto;
+}
+
+.graph-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-height: 4em;
+  background-color: var(--primary-color);
+  padding: 0.5em;
+  width: 100%; /*force full width*/
+}
+
+.graph-card-toggle {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.graph-card-content {
+  padding: 1em;
+  background-color: #ffffff;
+  width: 100%;
+}
+
+.graph-card-graph-content {
+  display: flex;
+}
+
+#statbox {
+  text-align: left;
+  font-size: smaller;
+}
+
+.graph-card-buttons {
+  display: flex;
+  justify-content: right;
+  gap: 1em;
+}
+
+#rematch-btn {
+  background-color: var(--primary-color);
+}
+
+#confirm-btn {
+  background-color: var(--secondary-color);
+  color: white;
 }
 
 .read-the-docs {
