@@ -1,6 +1,7 @@
 * {
   box-sizing: border-box;
 }
+
 html,
 body {
   margin: 0;
@@ -8,7 +9,7 @@ body {
   background: #f8f0fe; /* Full page background */
 }
 #root {
-  max-width: 1280px;
+  max-width: 1920px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
@@ -67,6 +68,12 @@ body {
   margin: 20px auto;
 }
 
+.graph-card-title {
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
 .graph-card-header {
   display: flex;
   justify-content: space-between;
@@ -98,6 +105,16 @@ body {
 
 .graph-card-graph-content {
   display: flex;
+  gap: 1em;
+  width: 100%;
+  height: 600px; /* Ensure graph has space */
+  position: relative;
+}
+
+.graph-card-graph-content > *:last-child {
+  flex: 1; /* Take remaining space */
+  min-width: 0; /* Allow flexbox to shrink if needed */
+  height: 100%;
 }
 
 #statbox {
@@ -107,7 +124,7 @@ body {
 
 .graph-card-buttons {
   display: flex;
-  justify-content: right;
+  justify-content: flex-end;
   gap: 1em;
 }
 

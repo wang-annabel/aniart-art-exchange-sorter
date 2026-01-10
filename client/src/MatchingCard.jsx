@@ -10,14 +10,13 @@ function MatchingCard({ matchingId = 0, data = sampleData }) {
     <div className="graph-card">
       <div className="graph-card-header">
         <span className="graph-card-title">Matching 1</span>
-        <span>
-          <button
-            className="graph-card-toggle"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            {isExpanded ? "▼" : "▶"}
-          </button>
-        </span>
+
+        <button
+          className="graph-card-toggle"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          {isExpanded ? "▼" : "▶"}
+        </button>
       </div>
       {isExpanded && (
         <div className="graph-card-content">

@@ -24,18 +24,38 @@ function Graph({ data = sampleData, nodeRadius = RADIUS }) {
     const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        setDimensions({ width, height });
+        const newWidth = Math.floor(width);
+        const newHeight = Math.floor(height);
+        // Only update if dimensions actually changed significantly
+        setDimensions((prev) => {
+          if (
+            Math.abs(prev.width - newWidth) > 5 ||
+            Math.abs(prev.height - newHeight) > 5
+          ) {
+            return { width: newWidth, height: newHeight };
+          }
+          return prev;
+        });
       }
     };
 
-    // Set initial dimensions
-    updateDimensions();
+    // Initial measurement
+    // Use setTimeout to ensure DOM is fully rendered
+    const timer = setTimeout(updateDimensions, 0);
 
-    // Listen for resize events
-    window.addEventListener("resize", updateDimensions);
+    // Debounced resize handler
+    let resizeTimeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(updateDimensions, 150);
+    };
+
+    window.addEventListener("resize", handleResize);
 
     return () => {
-      window.removeEventListener("resize", updateDimensions);
+      window.removeEventListener("resize", handleResize);
+      clearTimeout(resizeTimeout);
+      clearTimeout(timer);
     };
   }, []);
 
@@ -157,33 +177,6 @@ function Graph({ data = sampleData, nodeRadius = RADIUS }) {
         width={dimensions.width}
         height={dimensions.height}
       />
-      {hoveredNode && (
-        <div
-          style={{
-            position: "absolute",
-            top: "16px",
-            left: "16px",
-
-            color: "white",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            pointerEvents: "none",
-            fontSize: "14px",
-
-            maxWidth: "250px",
-          }}
-        >
-          <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
-            {hoveredNode.name}
-          </div>
-          <div style={{ fontSize: "12px", opacity: 0.9 }}>
-            {hoveredNode.discord}
-          </div>
-          <div style={{ fontSize: "12px", opacity: 0.8 }}>
-            {hoveredNode.email}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
