@@ -8,12 +8,21 @@ class UnmatchedArtist(BaseModel):
     email: str
     discord: str
 
+class FileUploadResponse(BaseModel):
+    file_id: UUID
+    filename: str
+
+
 class MatchResponse(BaseModel):
     matching_id: UUID
+    file_id: UUID
     success: bool
     matched_count: int
     total_count: int
     unmatched: list[UnmatchedArtist]
 
 class GraphResponse(BaseModel):
-    pass
+    participants: int
+    cycles: int
+    unmatched: int
+    # also nodes and links
