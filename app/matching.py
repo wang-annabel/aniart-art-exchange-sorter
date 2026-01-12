@@ -39,11 +39,14 @@ def form_response_to_input(file):
 
     return input_df
 
+
 def commas_to_set(raw):
-    if isinstance(raw, float):
-        # Empty column is typed as NAN float
-        return {}
-    return {x.strip() for x in raw.split(',')}
+    # Handle NaN (floats), None, or empty values by returning an empty set
+    if pd.isna(raw) or not isinstance(raw, str):
+        return set()
+
+    # Split by comma, strip whitespace, and filter out empty strings
+    return {x.strip() for x in raw.split(',') if x.strip()}
 
 class Artist:
     '''
@@ -104,7 +107,7 @@ def main():
 # Matching Algorithm
 # ==================================================
 
-def run(artists: list[str]):
+def run(artists: list[Artist]):
     assignments = []
     failed = []
     available = artists.copy()

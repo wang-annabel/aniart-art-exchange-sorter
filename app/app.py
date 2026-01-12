@@ -199,7 +199,7 @@ async def create_matching(
         user: Optional[User] = Depends(get_optional_user)
 ) -> MatchResponse:
     '''Create a new matching from a previously uploaded file.
-    Authentication is optional - logged in users can track their matchings.'''
+    Authentication is optional  logged in users can track their matchings.'''
     if file_id not in uploaded_files_cache:
         raise HTTPException(status_code = 404,
                             detail = f'No uploaded file found with id: {file_id}')
@@ -249,6 +249,7 @@ async def create_matching(
         }
 
     except Exception as e:
+        print(str(e))
         raise HTTPException(status_code = 500, detail = str(e))
 
 
