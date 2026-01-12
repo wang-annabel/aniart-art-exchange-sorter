@@ -11,6 +11,7 @@ class UnmatchedArtist(BaseModel):
 class FileUploadResponse(BaseModel):
     file_id: UUID
     filename: str
+    participant_count: int
 
 
 class MatchResponse(BaseModel):
@@ -21,8 +22,30 @@ class MatchResponse(BaseModel):
     total_count: int
     unmatched: list[UnmatchedArtist]
 
+class GraphNode(BaseModel):
+    id: str
+    name: str
+    discord: str
+    email: str
+
+class GraphLink(BaseModel):
+    source: str
+    target: str
+
 class GraphResponse(BaseModel):
+    matching_id: UUID
+    nodes: list[GraphNode]
+    links: list[GraphLink]
     participants: int
     cycles: int
     unmatched: int
     # also nodes and links
+
+class UserRead(schemas.BaseUser[UUID]):
+    pass
+
+class UserCreate(schemas.BaseUserCreate):
+    pass
+
+class UserUpdate(schemas.BaseUserUpdate):
+    pass

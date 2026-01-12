@@ -15,9 +15,18 @@ dependencies = [
     "uvicorn[standard]>=0.40.0",
     "alembic>=1.17.2",
     "pandas>=2.3.3",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "httpx>=0.28.1",
 ]
 [tool.taskipy.tasks]
 dev = "uvicorn app.app:app --host localhost --port 8000 --reload"
+test = "pytest -v"
+test-cov = "pytest --cov=app --cov-report=html"
 migrate = "alembic upgrade head"
 makemigrations = "alembic revision --autogenerate -m"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
 
