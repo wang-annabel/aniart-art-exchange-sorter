@@ -45,7 +45,7 @@ class UserRead(schemas.BaseUser[UUID]):
     pass
 
 class UserCreate(schemas.BaseUserCreate):
-    pass
+    name: str | None = None
 
 class UserUpdate(schemas.BaseUserUpdate):
     pass
