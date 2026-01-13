@@ -8,12 +8,18 @@ import sampleData from "./sampleData";
 // Make RADIUS configurable
 const RADIUS = 8; // Smaller for larger graphs
 
-function Graph({ data = sampleData, nodeRadius = RADIUS }) {
+function Graph({ matchingCache, matchId = null, nodeRadius = RADIUS }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [hoveredNode, setHoveredNode] = useState(null);
   const hoveredNodeRef = useRef(null);
+
+  if (!matchId) {
+    const data = sampleData;
+  } else {
+    const matchResponse = matchingCache.matchId; // nah you'd have to fetch this
+  }
 
   // Memoize to prevent recreating on every render
   const links = useMemo(() => data.links.map((d) => ({ ...d })), [data.links]);
