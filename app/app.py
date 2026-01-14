@@ -40,11 +40,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan = lifespan)
+origins = [
+    "http://localhost:5173",  # vite frontend
+    "http://127.0.0.1:5173",
+]
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins = ["*"],  # Adjust for production
+    allow_origins = origins,  # Adjust for production
     allow_credentials = True,
     allow_methods = ["*"],
     allow_headers = ["*"],
@@ -119,7 +123,7 @@ async def get_optional_user(
 # File Upload Routes (No auth required)
 # ============================================================================
 
-@app.post('"/files/upload"')
+@app.post('/files/upload')
 async def upload_file(
         file: UploadFile = File(...),
         session: AsyncSession = Depends(get_async_session),
@@ -257,49 +261,67 @@ async def create_matching(
 async def get_matching(matching_id: str) -> GraphResponse:
     '''Returns details of a matching attempt with graph visualization data.
     No authentication required.'''
-    if matching_id not in matching_cache:
-        raise HTTPException(status_code = 404, detail = f'No such matching: {matching_id}')
+    try:
+        if matching_id not in matching_cache:
+            raise HTTPException(status_code=404, detail=f'No such matching: {matching_id}')
 
-    response = matching_cache[matching_id]
-    assignments = response['assignments']
+        response = matching_cache[matching_id]
+        assignments = response['assignments']
+        unmatched_artists = response['unmatched']  # This is a list of dicts
 
-    # Build nodes and links
-    nodes_dict = {}
-    links = []
+        # Build nodes and links
+        nodes_dict = {}
+        links = []
 
-    for artist, recipient in assignments:
-        if artist.email not in nodes_dict:
-            nodes_dict[artist.email] = {
-                'id': artist.email,
-                'name': artist.name,
-                'discord': artist.discord,
-                'email': artist.email
-            }
-        if recipient.email not in nodes_dict:
-            nodes_dict[recipient.email] = {
-                'id': recipient.email,
-                'name': recipient.name,
-                'discord': recipient.discord,
-                'email': recipient.email
-            }
+        # Add matched artists
+        for artist, recipient in assignments:
+            if artist.email not in nodes_dict:
+                nodes_dict[artist.email] = {
+                    'id': artist.email,
+                    'name': artist.name,
+                    'discord': artist.discord,
+                    'email': artist.email,
+                    'matched': True  # ← Add this flag
+                }
+            if recipient.email not in nodes_dict:
+                nodes_dict[recipient.email] = {
+                    'id': recipient.email,
+                    'name': recipient.name,
+                    'discord': recipient.discord,
+                    'email': recipient.email,
+                    'matched': True
+                }
 
-        links.append({
-            'source': artist.email,
-            'target': recipient.email
-        })
+            links.append({
+                'source': artist.email,
+                'target': recipient.email
+            })
 
-    nodes = list(nodes_dict.values())
-    node_ids = [node['id'] for node in nodes]
+        # Add unmatched artists as standalone nodes
+        for unmatched in unmatched_artists:
+            if unmatched['email'] not in nodes_dict:
+                nodes_dict[unmatched['email']] = {
+                    'id': unmatched['email'],
+                    'name': unmatched['name'],
+                    'discord': unmatched['discord'],
+                    'email': unmatched['email'],
+                    'matched': False  # ← Add this flag
+                }
 
-    return {
-        'matching_id': matching_id,
-        'nodes': nodes,
-        'links': links,
-        'participants': len(nodes_dict),
-        'cycles': cycles(node_ids, links),
-        'unmatched': len(response['unmatched'])
-    }
+        nodes = list(nodes_dict.values())
+        node_ids = [node['id'] for node in nodes]
 
+        return {
+            'matching_id': matching_id,
+            'nodes': nodes,
+            'links': links,
+            'participants': len(nodes_dict),
+            'cycles': cycles(node_ids, links),
+            'unmatched': len(response['unmatched'])
+        }
+    except Exception as e:
+        print(f'DEBUG ERROR: {e}')
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get('/matchings/{matching_id}/download')
 async def download_output(matching_id: str) -> FileResponse:

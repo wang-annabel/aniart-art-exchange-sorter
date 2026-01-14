@@ -26,10 +26,11 @@ function UploadBtn({ apiBase, onUpdateMatchingCache }) {
 
       if (!fileResponse.ok) {
         const errorData = await fileResponse.json();
-        throw new Error(errorData.dtail || "File upload failed.");
+        throw new Error(errorData.detail || "File upload failed.");
       }
 
-      const fileData = await response.json();
+      const fileData = await fileResponse.json();
+      const fileId = fileData.file_id;
 
       // 2. create matching
       const matchResponse = await fetch(
@@ -49,8 +50,7 @@ function UploadBtn({ apiBase, onUpdateMatchingCache }) {
       console.log("Matching created, ID:", matchingId);
 
       // 3. update matching cache
-      onUpdateMatchingCache((cache) => [...cache, matchingId]);
-
+      onUpdateMatchingCache(matchingId, fileId);
       // reset file input
       event.target.value = "";
     } catch (error) {

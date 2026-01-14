@@ -1,29 +1,27 @@
-// Graph.jsx - Responsive version
+// Graph.jsx
 import { useRef, useEffect, useState, useMemo } from "react";
 import * as d3 from "d3";
 import { drawNetwork } from "./drawNetwork";
 
-import sampleData from "./sampleData";
+const RADIUS = 8;
 
-// Make RADIUS configurable
-const RADIUS = 8; // Smaller for larger graphs
-
-function Graph({ matchingCache, matchId = null, nodeRadius = RADIUS }) {
+function Graph({ data, nodeRadius = RADIUS }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [hoveredNode, setHoveredNode] = useState(null);
   const hoveredNodeRef = useRef(null);
 
-  if (!matchId) {
-    const data = sampleData;
-  } else {
-    const matchResponse = matchingCache.matchId; // nah you'd have to fetch this
-  }
-
   // Memoize to prevent recreating on every render
-  const links = useMemo(() => data.links.map((d) => ({ ...d })), [data.links]);
-  const nodes = useMemo(() => data.nodes.map((d) => ({ ...d })), [data.nodes]);
+  const links = useMemo(
+    () => (data?.links ? data.links.map((d) => ({ ...d })) : []),
+    [data?.links]
+  );
+
+  const nodes = useMemo(
+    () => (data?.nodes ? data.nodes.map((d) => ({ ...d })) : []),
+    [data?.nodes]
+  );
 
   // Handle resize - update dimensions when container size changes
   useEffect(() => {
@@ -32,7 +30,7 @@ function Graph({ matchingCache, matchId = null, nodeRadius = RADIUS }) {
         const { width, height } = containerRef.current.getBoundingClientRect();
         const newWidth = Math.floor(width);
         const newHeight = Math.floor(height);
-        // Only update if dimensions actually changed significantly
+
         setDimensions((prev) => {
           if (
             Math.abs(prev.width - newWidth) > 5 ||
@@ -45,11 +43,8 @@ function Graph({ matchingCache, matchId = null, nodeRadius = RADIUS }) {
       }
     };
 
-    // Initial measurement
-    // Use setTimeout to ensure DOM is fully rendered
     const timer = setTimeout(updateDimensions, 0);
 
-    // Debounced resize handler
     let resizeTimeout;
     const handleResize = () => {
       clearTimeout(resizeTimeout);
@@ -69,14 +64,14 @@ function Graph({ matchingCache, matchId = null, nodeRadius = RADIUS }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
-    if (!context || !canvas) {
+
+    if (!context || !canvas || nodes.length === 0) {
       return;
     }
 
-    // Scale force strengths based on number of nodes
     const nodeCount = nodes.length;
-    const chargeStrength = -300 * Math.sqrt(nodeCount / 10); // Stronger repulsion for more nodes
-    const linkDistance = Math.min(100, dimensions.width / 8); // Scale with canvas size
+    const chargeStrength = -300 * Math.sqrt(nodeCount / 10);
+    const linkDistance = Math.min(100, dimensions.width / 8);
 
     const simulation = d3
       .forceSimulation(nodes)
@@ -93,11 +88,9 @@ function Graph({ matchingCache, matchId = null, nodeRadius = RADIUS }) {
         "center",
         d3.forceCenter(dimensions.width / 2, dimensions.height / 2)
       )
-      // Keep nodes within bounds
       .force("x", d3.forceX(dimensions.width / 2).strength(0.2))
       .force("y", d3.forceY(dimensions.height / 2).strength(0.2))
       .on("tick", () => {
-        // Constrain nodes to canvas bounds
         nodes.forEach((node) => {
           if (node.x !== undefined && node.y !== undefined) {
             node.x = Math.max(
@@ -144,6 +137,7 @@ function Graph({ matchingCache, matchId = null, nodeRadius = RADIUS }) {
       hoveredNodeRef.current = found;
       setHoveredNode(found);
       canvas.style.cursor = found ? "pointer" : "default";
+
       drawNetwork(
         context,
         dimensions.width,
@@ -163,6 +157,21 @@ function Graph({ matchingCache, matchId = null, nodeRadius = RADIUS }) {
     };
   }, [dimensions, nodes, links, nodeRadius]);
 
+  if (!data || nodes.length === 0) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "400px",
+        }}
+      >
+        <p>No data to display</p>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -170,7 +179,7 @@ function Graph({ matchingCache, matchId = null, nodeRadius = RADIUS }) {
         position: "relative",
         width: "100%",
         height: "100%",
-        minHeight: "400px", // Prevent collapse
+        minHeight: "400px",
       }}
     >
       <canvas
