@@ -300,6 +300,7 @@ function App() {
         {!showAuth && (
           <UploadBtn
             apiBase={apiBase}
+            token={token}
             onUpdateMatchingCache={handleMatchingCreated}
           />
         )}

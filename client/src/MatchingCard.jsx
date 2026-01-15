@@ -44,7 +44,9 @@ function MatchingCard({
       }
 
       const result = await response.json();
-      alert("Matching confirmed successfully!");
+      alert(
+        "Matching confirmed successfully! Future matches will avoid these pairings."
+      );
       console.log("Confirmation result:", result);
     } catch (error) {
       console.error("Confirm error:", error);

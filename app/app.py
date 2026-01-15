@@ -94,6 +94,24 @@ async def verify_token(user: User = Depends(current_active_user)):
 # ============================================================================
 # Helper Functions
 # ============================================================================
+async def refresh_file_cache(file_id: str, session: AsyncSession, user_id: uuid.UUID):
+    """Refresh the cached file data with updated previous assignments"""
+    if file_id not in uploaded_files_cache:
+        return
+    
+    file_data = uploaded_files_cache[file_id]
+    input_df = file_data['dataframe'].copy()
+    
+    # Re-populate previous assignments with current user's data
+    input_df = await merge_previous_assignments(input_df, session, user_id)
+    
+    # Update the cache
+    uploaded_files_cache[file_id]['dataframe'] = input_df
+    
+    # Also update the saved CSV file
+    input_path = f'generated/input_{file_id}.csv'
+    if os.path.exists(input_path):
+        input_df.to_csv(input_path, index=False)
 
 async def merge_previous_assignments(
     input_df: pd.DataFrame, 
@@ -101,6 +119,9 @@ async def merge_previous_assignments(
     user_id: Optional[uuid.UUID] = None
 ):
     '''Look up each participant's previous assignments (scoped to user if provided)'''
+    print(f"\n--- merge_previous_assignments called ---")
+    print(f"User ID: {user_id}")
+    
     for idx, row in input_df.iterrows():
         email = row['Email']
         prev_assignments = []  # Initialize for each row
@@ -118,6 +139,8 @@ async def merge_previous_assignments(
             
             result = await session.execute(query)
             prev_assignments = result.scalars().all()
+            
+            print(f"  {email}: found {len(prev_assignments)} previous assignments")
         # else: non-logged in users get empty previous assignments (no persistence)
 
         # Get the emails of artists who have drawn for this person before
@@ -128,9 +151,12 @@ async def merge_previous_assignments(
             prev_result = await session.execute(prev_artist_query)
             prev_emails = [email for email, in prev_result.all()]
             input_df.at[idx, 'Previously Assigned'] = ', '.join(prev_emails)
+            print(f"    -> Previously assigned: {prev_emails}")
         else:
             input_df.at[idx, 'Previously Assigned'] = ''
+            print(f"    -> No previous assignments")
 
+    print("--- merge_previous_assignments complete ---\n")
     return input_df
 
 # Optional user dependency - returns None if not authenticated
@@ -153,6 +179,11 @@ async def upload_file(
 ) -> FileUploadResponse:
     '''Upload and process a CSV file. Returns a file_id that can be used to create matchings.
     Authentication is optional - logged in users can track their uploads.'''
+    
+    print(f"\n=== FILE UPLOAD ===")
+    print(f"User: {user.email if user else 'Not logged in'}")
+    print(f"User ID: {user.id if user else None}")
+    
     temp_input = tempfile.NamedTemporaryFile(delete = False,
                                              suffix = os.path.splitext(file.filename)[1])
 
@@ -166,6 +197,7 @@ async def upload_file(
 
         # Merge with previous assignments (scoped to user if logged in)
         user_id = user.id if user else None
+        print(f"Calling merge_previous_assignments with user_id: {user_id}")
         input_df = await merge_previous_assignments(input_df, session, user_id)
 
         # Generate file ID and cache the processed DataFrame
@@ -181,6 +213,9 @@ async def upload_file(
         input_path = f'generated/input_{file_id}.csv'
         os.makedirs('generated', exist_ok = True)
         input_df.to_csv(input_path, index = False)
+        
+        print(f"File uploaded successfully, file_id: {file_id}")
+        print(f"=== FILE UPLOAD COMPLETE ===\n")
 
         return {
             'file_id': file_id,
@@ -200,7 +235,6 @@ async def upload_file(
         if temp_input.name and os.path.exists(temp_input.name):
             os.unlink(temp_input.name)
         file.file.close()
-
 
 @app.get('/files/{file_id}')
 async def get_file_info(file_id: str):
@@ -371,7 +405,7 @@ async def download_output(matching_id: str) -> FileResponse:
 @app.post('/matchings/{matching_id}/confirm')
 async def confirm_matching(
         matching_id: str,
-        user: User = Depends(current_active_user),  # ← Authentication REQUIRED
+        user: User = Depends(current_active_user),
         session: AsyncSession = Depends(get_async_session)
 ):
     '''Confirm the matching and commit to database.
@@ -438,16 +472,20 @@ async def confirm_matching(
         await session.commit()
         match_info['confirmed'] = True
 
+        # CRITICAL: Refresh the file cache with updated previous assignments
+        file_id = match_info['file_id']
+        await refresh_file_cache(file_id, session, user.id)
+
         return {
             'message': 'Matching confirmed successfully',
-            'matching_id': matching_id
+            'matching_id': matching_id,
+            'file_cache_refreshed': True
         }
 
     except Exception as e:
         await session.rollback()
         raise HTTPException(status_code = 500, detail = str(e))
-
-
+    
 # ============================================================================
 # User History Routes (REQUIRES authentication)
 # ============================================================================
