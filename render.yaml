@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: art-exchange-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: art-exchange-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.11
+
+databases:
+  - name: art-exchange-db
+    databaseName: art_exchange
+    user: art_exchange_user

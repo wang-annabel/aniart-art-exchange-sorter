@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+asyncpg
+python-dotenv
+pandas
+fastapi-users[sqlalchemy]
+httpx
+aiosqlite
