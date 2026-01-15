@@ -40,9 +40,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan = lifespan)
+frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 origins = [
-    "http://localhost:5173",  # vite frontend
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
+    frontend_url
 ]
 
 # CORS middleware

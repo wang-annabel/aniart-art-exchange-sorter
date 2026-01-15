@@ -9,7 +9,8 @@ import "./App.css";
 import UploadBtn from "./UploadBtn";
 
 function App() {
-  const apiBase = "http://localhost:8000";
+  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [user, setUser] = useState(null);
