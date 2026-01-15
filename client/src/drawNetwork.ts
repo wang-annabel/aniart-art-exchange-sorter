@@ -5,6 +5,7 @@ export interface Node extends d3.SimulationNodeDatum {
   name?: string;
   discord?: string;
   email?: string;
+  matched?: boolean;
 }
 
 export interface Link extends d3.SimulationLinkDatum<Node> {
@@ -114,6 +115,7 @@ export const drawNetwork = (
     const isHovered = hoveredNode?.id === node.id;
     const isNeighbor = hoveredNode && neighbors.has(node.id);
     const isHighlighted = isHovered || isNeighbor;
+    const isUnmatched = node.matched === false;
 
     context.globalAlpha = hoveredNode && !isHighlighted ? 0.3 : 1;
 
@@ -125,10 +127,19 @@ export const drawNetwork = (
       0,
       2 * Math.PI
     );
-    context.fillStyle = isHovered ? "#3b82f6" : "#6366f1";
+    // Different colors for matched vs unmatched
+    if (isUnmatched) {
+      context.fillStyle = isHovered ? "#ef4444" : "#f87171"; // Red for unmatched
+    } else {
+      context.fillStyle = isHovered ? "#3b82f6" : "#6366f1"; // Blue for matched
+    }
     context.fill();
 
-    context.strokeStyle = isHighlighted ? "#60a5fa" : "#4f46e5";
+    if (isUnmatched) {
+      context.strokeStyle = isHighlighted ? "#dc2626" : "#ef4444";
+    } else {
+      context.strokeStyle = isHighlighted ? "#60a5fa" : "#4f46e5";
+    }
     context.lineWidth = isHighlighted ? 2 : 1.5;
     context.stroke();
 

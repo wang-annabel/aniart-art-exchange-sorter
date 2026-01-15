@@ -45,7 +45,7 @@ origins = [
     "http://127.0.0.1:5173",
 ]
 
-# Add CORS middleware
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins = origins,  # Adjust for production
@@ -66,7 +66,7 @@ app.include_router(
     fastapi_users.get_auth_router(auth_backend),
     prefix = "/auth/jwt",
     tags = ["auth"]
-)
+)\
 
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
@@ -80,23 +80,45 @@ app.include_router(
     tags = ["users"]
 )
 
+@app.get('/auth/verify')
+async def verify_token(user: User = Depends(current_active_user)):
+    """Verify if the current token is valid and return user info"""
+    return {
+        'id': str(user.id),
+        'email': user.email,
+        'name': user.name,
+        'is_active': user.is_active,
+        'is_verified': user.is_verified
+    }
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
 
-async def merge_previous_assignments(input_df: pd.DataFrame, session: AsyncSession):
-    '''Look up each participant in the database and populate Previously Assigned field'''
+async def merge_previous_assignments(
+    input_df: pd.DataFrame, 
+    session: AsyncSession,
+    user_id: Optional[uuid.UUID] = None
+):
+    '''Look up each participant's previous assignments (scoped to user if provided)'''
     for idx, row in input_df.iterrows():
         email = row['Email']
+        prev_assignments = []  # Initialize for each row
 
-        # Query for this participant's previous assignments
-        query = select(PreviouslyAssigned).join(
-            Participant, PreviouslyAssigned.recipient_id == Participant.id
-        ).where(Participant.email == email)
-
-        result = await session.execute(query)
-        prev_assignments = result.scalars().all()
+        if user_id:
+            # Only get assignments from matchings created by this specific user
+            query = select(PreviouslyAssigned).join(
+                Participant, PreviouslyAssigned.recipient_id == Participant.id
+            ).join(
+                Matching, PreviouslyAssigned.matching_id == Matching.id
+            ).where(
+                Participant.email == email,
+                Matching.created_by == user_id
+            )
+            
+            result = await session.execute(query)
+            prev_assignments = result.scalars().all()
+        # else: non-logged in users get empty previous assignments (no persistence)
 
         # Get the emails of artists who have drawn for this person before
         if prev_assignments:
@@ -111,7 +133,6 @@ async def merge_previous_assignments(input_df: pd.DataFrame, session: AsyncSessi
 
     return input_df
 
-
 # Optional user dependency - returns None if not authenticated
 async def get_optional_user(
         user: User = Depends(fastapi_users.current_user(optional = True))
@@ -122,6 +143,7 @@ async def get_optional_user(
 # ============================================================================
 # File Upload Routes (No auth required)
 # ============================================================================
+
 
 @app.post('/files/upload')
 async def upload_file(
@@ -142,8 +164,9 @@ async def upload_file(
         # Convert to input format
         input_df = matching.form_response_to_input(temp_input.name)
 
-        # Merge with previous assignments
-        input_df = await merge_previous_assignments(input_df, session)
+        # Merge with previous assignments (scoped to user if logged in)
+        user_id = user.id if user else None
+        input_df = await merge_previous_assignments(input_df, session, user_id)
 
         # Generate file ID and cache the processed DataFrame
         file_id = str(uuid.uuid4())
@@ -151,7 +174,7 @@ async def upload_file(
             'dataframe': input_df,
             'filename': file.filename,
             'participant_count': len(input_df),
-            'uploaded_by': user.id if user else None  # Track if logged in
+            'uploaded_by': user.id if user else None
         }
 
         # Optionally save to disk for persistence

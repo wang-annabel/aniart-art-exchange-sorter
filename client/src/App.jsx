@@ -1,9 +1,10 @@
-// App.jsx
+// App.jsx - FIXED with Auth import and component
 
 import { useState, useEffect } from "react";
 import Graph from "./Graph";
 import Cards from "./Cards";
 import MatchingCard from "./MatchingCard";
+import Auth from "./Auth"; // <-- THIS WAS MISSING!
 import "./App.css";
 import UploadBtn from "./UploadBtn";
 
@@ -11,6 +12,8 @@ function App() {
   const apiBase = "http://localhost:8000";
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState(localStorage.getItem("token"));
+  const [user, setUser] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
 
   // Load from localStorage on mount with validation
   const [matchings, setMatchings] = useState(() => {
@@ -19,7 +22,6 @@ function App() {
       if (!saved) return [];
 
       const parsed = JSON.parse(saved);
-      // Validate that it's an array of strings
       if (
         Array.isArray(parsed) &&
         parsed.every((id) => typeof id === "string")
@@ -83,17 +85,72 @@ function App() {
     }
   }, [fileIds]);
 
-  // Check if token exists on mount
+  // Verify token on mount and when token changes
   useEffect(() => {
-    if (token) {
-      setIsLoggedIn(true);
-    }
+    const verifyToken = async () => {
+      if (!token) {
+        setIsLoggedIn(false);
+        setUser(null);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${apiBase}/auth/verify`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+          setIsLoggedIn(true);
+        } else {
+          // Token is invalid
+          console.warn("Token verification failed");
+          handleLogout();
+        }
+      } catch (error) {
+        console.error("Error verifying token:", error);
+        handleLogout();
+      }
+    };
+
+    verifyToken();
   }, [token]);
 
-  function handleLogout() {
-    localStorage.removeItem("token");
-    setToken(null);
-    setIsLoggedIn(false);
+  function handleSetToken(newToken) {
+    setToken(newToken);
+    setShowAuth(false);
+  }
+
+  async function handleLogout() {
+    try {
+      // Call logout endpoint
+      if (token) {
+        await fetch(`${apiBase}/auth/jwt/logout`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      // Clear all local state and caches
+      localStorage.removeItem("token");
+      localStorage.removeItem("matchings");
+      localStorage.removeItem("matchingCache");
+      localStorage.removeItem("fileIds");
+
+      setToken(null);
+      setIsLoggedIn(false);
+      setUser(null);
+      setMatchings([]);
+      setMatchingCache({});
+      setFileIds({});
+    }
   }
 
   function handleClearSession() {
@@ -113,7 +170,6 @@ function App() {
 
   // Helper function to fetch a single matching
   const fetchMatchingData = async (matchingId) => {
-    // Validate matchingId
     if (!matchingId || typeof matchingId !== "string") {
       console.error("Invalid matchingId:", matchingId);
       return;
@@ -126,31 +182,23 @@ function App() {
 
       if (!response.ok) {
         if (response.status === 404) {
-          // Matching doesn't exist on backend - remove it from local state
           console.warn(
             `Matching ${matchingId} not found on server, removing from cache`
           );
 
-          // Remove from all state
-          setMatchings((prev) => {
-            const updated = prev.filter((id) => id !== matchingId);
-            console.log("Updated matchings:", updated);
-            return updated;
-          });
-
+          setMatchings((prev) => prev.filter((id) => id !== matchingId));
           setMatchingCache((prev) => {
             const updated = { ...prev };
             delete updated[matchingId];
             return updated;
           });
-
           setFileIds((prev) => {
             const updated = { ...prev };
             delete updated[matchingId];
             return updated;
           });
 
-          return; // Don't throw error, just silently remove
+          return;
         }
         throw new Error(`Failed to fetch matching data: ${response.status}`);
       }
@@ -165,7 +213,6 @@ function App() {
       console.log("Matching data fetched successfully:", matchingId);
     } catch (error) {
       console.error("Error fetching matching:", error);
-      // Don't show alert for 404s
       if (!error.message.includes("404")) {
         alert(`Error fetching matching data: ${error.message}`);
       }
@@ -176,11 +223,8 @@ function App() {
   useEffect(() => {
     if (matchings.length === 0) return;
 
-    console.log("Checking matchings for missing data:", matchings);
-
     matchings.forEach((matchingId) => {
       if (!matchingCache[matchingId]) {
-        console.log(`Missing data for ${matchingId}, fetching...`);
         fetchMatchingData(matchingId);
       }
     });
@@ -190,9 +234,7 @@ function App() {
   const handleMatchingCreated = (matchingId, fileId) => {
     console.log("Matching created:", matchingId, "File ID:", fileId);
 
-    // Validate inputs
     if (!matchingId || typeof matchingId !== "string") {
-      console.log(typeof matchingId);
       console.error("Invalid matchingId received:", matchingId);
       return;
     }
@@ -205,7 +247,6 @@ function App() {
     setMatchings((prev) => [...prev, matchingId]);
     setFileIds((prev) => ({ ...prev, [matchingId]: fileId }));
 
-    // Immediately fetch the matching data
     fetchMatchingData(matchingId);
   };
 
@@ -223,11 +264,17 @@ function App() {
             flexWrap: "wrap",
           }}
         >
-          {isLoggedIn && (
-            <div>
-              <span>Logged in</span>
+          {isLoggedIn ? (
+            <div
+              style={{ display: "flex", gap: "0.5em", alignItems: "center" }}
+            >
+              <span>Logged in as {user?.name || user?.email}</span>
               <button onClick={handleLogout}>Logout</button>
             </div>
+          ) : (
+            <button onClick={() => setShowAuth(!showAuth)}>
+              {showAuth ? "Cancel" : "Login / Sign Up"}
+            </button>
           )}
 
           {matchings.length > 0 && (
@@ -240,16 +287,28 @@ function App() {
           )}
         </div>
 
-        <UploadBtn
-          apiBase={apiBase}
-          onUpdateMatchingCache={handleMatchingCreated}
-        />
+        {/* CRITICAL: Show Auth component when showAuth is true */}
+        {showAuth && !isLoggedIn && (
+          <div
+            style={{ marginTop: "2em", maxWidth: "400px", margin: "2em auto" }}
+          >
+            <Auth apiBase={apiBase} onSetToken={handleSetToken} />
+          </div>
+        )}
+
+        {/* Only show upload button when not showing auth */}
+        {!showAuth && (
+          <UploadBtn
+            apiBase={apiBase}
+            onUpdateMatchingCache={handleMatchingCreated}
+          />
+        )}
       </div>
 
       <div id="content">
-        {matchings.length === 0 && <Cards />}
+        {matchings.length === 0 && !showAuth && <Cards />}
 
-        {matchings.length > 0 && (
+        {matchings.length > 0 && !showAuth && (
           <div>
             {matchings.map((matchingId, index) => {
               const data = matchingCache[matchingId];
@@ -275,6 +334,7 @@ function App() {
                   data={data}
                   apiBase={apiBase}
                   isLoggedIn={isLoggedIn}
+                  token={token}
                   fileId={fileId}
                   onRematchComplete={handleMatchingCreated}
                 />

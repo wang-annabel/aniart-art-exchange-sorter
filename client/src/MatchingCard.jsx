@@ -11,6 +11,7 @@ function MatchingCard({
   data,
   apiBase,
   isLoggedIn,
+  token,
   fileId,
   onRematchComplete,
 }) {
@@ -18,9 +19,8 @@ function MatchingCard({
   const [isConfirming, setIsConfirming] = useState(false);
 
   const handleConfirm = async () => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !token) {
       alert("Please log in to confirm matchings");
-      // TODO: Redirect to login
       return;
     }
 
@@ -32,7 +32,8 @@ function MatchingCard({
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
         }
       );
@@ -42,7 +43,9 @@ function MatchingCard({
         throw new Error(errorData.detail || "Failed to confirm matching");
       }
 
+      const result = await response.json();
       alert("Matching confirmed successfully!");
+      console.log("Confirmation result:", result);
     } catch (error) {
       console.error("Confirm error:", error);
       alert(`Error: ${error.message}`);
@@ -118,7 +121,8 @@ function MatchingCard({
             <button
               id="confirm-btn"
               onClick={handleConfirm}
-              disabled={isConfirming}
+              disabled={isConfirming || !isLoggedIn}
+              title={!isLoggedIn ? "Login required to confirm" : ""}
             >
               {isConfirming ? "Confirming..." : "Confirm"}
             </button>
