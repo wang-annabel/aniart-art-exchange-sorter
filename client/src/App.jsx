@@ -263,11 +263,17 @@ function App() {
             justifyContent: "center",
             alignItems: "center",
             flexWrap: "wrap",
+            marginBottom: "2em",
           }}
         >
           {isLoggedIn ? (
             <div
-              style={{ display: "flex", gap: "0.5em", alignItems: "center" }}
+              style={{
+                display: "flex",
+                gap: "0.5em",
+                alignItems: "center",
+                marginBottom: "2em",
+              }}
             >
               <span>Logged in as {user?.name || user?.email}</span>
               <button onClick={handleLogout}>Logout</button>

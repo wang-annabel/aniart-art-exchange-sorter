@@ -11,8 +11,11 @@ def form_response_to_input(file):
     if file.split('.')[-1] != 'csv':
         raise TypeError('File extension must be .csv')
 
-    df = pd.read_csv(file)
-
+    # try:
+    df = pd.read_csv(file, skipinitialspace=True, quotechar='"')
+    # except Exception:
+    #     # Fallback if the user has weird formatting
+    #     df = pd.read_csv(file, on_bad_lines='skip')
     # Map the Google Form columns to the input format columns
     # Form columns -> Input columns
 

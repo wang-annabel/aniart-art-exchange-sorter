@@ -71,7 +71,10 @@ function Graph({ data, nodeRadius = RADIUS }) {
 
     const nodeCount = nodes.length;
     const chargeStrength = -300 * Math.sqrt(nodeCount / 10);
-    const linkDistance = Math.min(100, dimensions.width / 8);
+    const linkDistance = Math.max(
+      30,
+      Math.min(80, dimensions.width / (nodeCount * 0.15))
+    );
 
     const simulation = d3
       .forceSimulation(nodes)
