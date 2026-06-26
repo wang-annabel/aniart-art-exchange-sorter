@@ -1,16 +1,60 @@
-version: '3.8'
+# docker-compose.yml
+version: "3.8"
 
 services:
-  postgres:
+  # PostgreSQL Database
+  db:
     image: postgres:13-alpine
+    container_name: art-exchange-db
     environment:
-      POSTGRES_DB: artexchange
       POSTGRES_USER: artexchange
-      POSTGRES_PASSWORD: artexchange
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: artexchange123
+      POSTGRES_DB: art_exchange
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U artexchange"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: art-exchange-backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://artexchange:artexchange123@db:5432/art_exchange
+      FRONTEND_URL: http://localhost:5173
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./generated:/app/generated
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn app.app:app --host 0.0.0.0 --port 8000 --reload
+
+  # React Frontend (Development)
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.frontend
+    container_name: art-exchange-frontend
+    environment:
+      VITE_API_BASE: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client/src:/app/src
+      - ./client/public:/app/public
+    depends_on:
+      - backend
+    command: npm run dev -- --host
 
 volumes:
   postgres_data:
