@@ -28,7 +28,7 @@ def form_response_to_input(file):
         'Wishlist Tags': df['Wishlist Tags'],
         'Blacklist Tags': df['Blacklist (optional)'],
         'References': df['References (strongly recommended)'],
-        'Previously Assigned': float('nan')  # Empty string for new participants
+        'Previously Assigned': ''
     })
 
     # Clean up the data
